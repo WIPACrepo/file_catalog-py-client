@@ -35,13 +35,19 @@ The metadata for a certain file can be queried by using `get_file()`. One can ei
     c.get_file(uid = '1234')
     c.get_file(mongo_id = '57fd49163a7d4957ca064089')
 
+    # This will fail: either uid or mongo_id can be used
+    c.get_file(uid = 'file uid', mongo_id = '57fd49163a7d4957ca064089')
+
 ### Delete a File
 
     c.delete_file()
 
 ### Update a File
+In order to update a file, `update_file()` can be used. One can use `mongo_id` or `uid` as identifier. `update_file()` utilizes the cache to find the `etag`. If no `etag` has been cached for this file, it queries the `etag` prior the update.
 
-    c.update_file()
+**Note:** If you want to ignore the cached `etag`, use `clear_cache = True`.
+
+    c.update_file(mongo_id = '57fd49163a7d4957ca064089', metadata = {'backupd': True})
 
 ### Replace a File
 
