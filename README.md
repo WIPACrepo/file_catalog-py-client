@@ -53,8 +53,12 @@ In order to update a file, `update_file()` can be used. One can use `mongo_id` o
     c.update_file(mongo_id = '57fd49163a7d4957ca064089', metadata = {'backupd': True})
 
 ### Replace a File
+Replacing the metadata of a file is pretty similar to updating it. The difference is that any key that is not passed via the `metadata` will be deleted. Therefore, be sure to add the mandatory fields except for the `uid` and `mongo_id` since they cannot be changed.
 
-    c.replace_file()
+**Note:** If you want to ignore the cached `etag`, use `clear_cache = True`.
+
+    c.replace_file(uid = '1234', metadata = {'checksum': '3d539...f5', 'locations': ['/a/path/to/a/copy/file.dat'], 'backup': False})
+    c.replace_file(mongo_id = '57fd49163a7d4957ca064089', metadata = {'checksum': '3d539...f5', 'locations': ['/a/path/to/a/copy/file.dat'], 'backup': False})
 
 ## Errors
 There are two types of errors: client side errors and server side errors. Client side errors are instances of `filecatalogpyclient.ClientError`. Server side errors are instances of `filecatalogpyclient.Error`.

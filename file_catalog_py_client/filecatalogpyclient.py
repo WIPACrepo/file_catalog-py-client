@@ -221,6 +221,12 @@ class FileCatalogPyClient:
         `clear_cache`: If set to `True` (`False` is default), it will not use the etag that is in the cache. It will query first the
         etag and will use this instead.
         """
+        return self._update_or_replace_file(mongo_id = mongo_id, uid = uid, metadata = metadata, clear_cache = clear_cache, method = requests.patch)
+
+    def _update_or_replace_file(self, mongo_id = None, uid = None, metadata = {}, clear_cache = False, method = None):
+        """
+        Since `patch` and `put` have the same interface but do different things, we only need one method with a switch... :)
+        """
         mongo_id = self._get_mongo_id(mongo_id, uid)
 
         if not metadata:
@@ -244,7 +250,7 @@ class FileCatalogPyClient:
                 # do not know the etag. Thats odd. Abort.
                 raise ClientError("Could not update file with `mongo_id` = %s because we could not find the etag" % mongo_id)
 
-        r = requests.patch(os.path.join(self._url, 'files', mongo_id),
+        r = method(os.path.join(self._url, 'files', mongo_id),
                            data = json.dumps(metadata),
                            headers = {'If-None-Match': etag})
 
@@ -259,8 +265,11 @@ class FileCatalogPyClient:
         else:
             raise error_factory(r.status_code, r.text)
 
-    def replace_file(self, mongo_id = None, uid = None):
-        pass
+    def replace_file(self, mongo_id = None, uid = None, metadata = {}, clear_cache = False):
+        """
+        Replaces the metadata of a file except for `mongo_id` and `uid`.
+        """
+        return self._update_or_replace_file(mongo_id = mongo_id, uid = uid, metadata = metadata, clear_cache = clear_cache, method = requests.put)
 
     def delete_file(self, mongo_id = None, uid = None):
         """
