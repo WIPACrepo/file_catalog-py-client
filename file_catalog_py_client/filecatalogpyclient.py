@@ -85,6 +85,18 @@ class Cache:
     def has_mongo_id(self, uid):
         return uid in self._mongo_id
 
+    def delete_mongo_id(self, mongo_id):
+        """
+        Deletes the uid/mongo_id mapping by mongo_id. If the mongo_id was not mapped, nothing happens.
+        """
+        uid = None
+        for u, mid in self._mongo_id.iteritems():
+            if mid == mongo_id:
+                uid = u
+
+        if uid is not None:
+            del self._mongo_id[uid]
+
     def set_etag(self, mongo_id, etag):
         self._etag[mongo_id] = etag
 
@@ -96,6 +108,16 @@ class Cache:
 
     def delete_etag(self, mongo_id):
         del self._etag[mongo_id]
+
+    def clear_cache_by_mongo_id(self, mongo_id):
+        """
+        Removes everything that is connected to this mongo_id from the cache.
+        If the mongo_id was not found in the cache, nothing happens.
+        """
+        if self.has_etag(mongo_id):
+            self.delete_etag(mongo_id)
+
+        self.delete_mongo_id(mongo_id)
 
 class FileCatalogPyClient:
     def __init__(self, url, port = None):
@@ -241,7 +263,17 @@ class FileCatalogPyClient:
         pass
 
     def delete_file(self, mongo_id = None, uid = None):
-        pass
+        """
+        Deletes the metadata of a file.
+        """
+        mongo_id = self._get_mongo_id(mongo_id, uid)
+
+        r = requests.delete(os.path.join(self._url, 'files', mongo_id))
+
+        if r.status_code == requests.codes.NO_CONTENT:
+            self._cache.clear_cache_by_mongo_id(mongo_id)
+        else:
+            raise error_factory(r.status_code, r.text)
 
     def _get_mongo_id(self, mongo_id, uid):
         """
