@@ -59,14 +59,43 @@ def error_factory(code, message):
         error_factory.__dict__['cls'] = Error.__subclasses__()
         error_factory.__dict__['codes'] = [c('').code for c in error_factory.__dict__['cls']]
 
-        print "Init error_factory executed"
-
     try:
         # `index()` throws an `ValueError` if the value isn't found
         i = error_factory.__dict__['codes'].index(code)
         return error_factory.__dict__['cls'][i](message)
     except ValueError as e:
         return Error(message, code)
+
+class Cache:
+    """
+    Manages the caching for the file catalog client.
+
+    For instance, the mongo_id/uid and the etags are cached.
+    """
+    def __init__(self):
+        self._mongo_id = {}
+        self._etag = {}
+
+    def set_mongo_id(self, uid, mongo_id):
+        self._mongo_id[uid] = mongo_id
+
+    def get_mongo_id(self, uid):
+        return self._mongo_id[uid]
+
+    def has_mongo_id(self, uid):
+        return uid in self._mongo_id
+
+    def set_etag(self, mongo_id, etag):
+        self._etag[mongo_id] = etag
+
+    def get_etag(self, mongo_id):
+        return self._etag[mongo_id]
+
+    def has_etag(self, mongo_id):
+        return mongo_id in self._etag
+
+    def delete_etag(self, mongo_id):
+        del self._etag[mongo_id]
 
 class FileCatalogPyClient:
     def __init__(self, url, port = None):
@@ -76,7 +105,7 @@ class FileCatalogPyClient:
         If a port is specified, it is added to the `url`, e.g. `https://example.com:8080`.
         """
         self._url = url
-        self._cache = {}
+        self._cache = Cache()
 
         if port is not None:
             self._url = self._url + ':' + str(port)
@@ -108,11 +137,11 @@ class FileCatalogPyClient:
         r = requests.get(os.path.join(self._url, 'files'), params = payload)
 
         if r.status_code == requests.codes.OK:
-            rdict = json.loads(r.text)
+            rdict = r.json()
 
             for f in rdict['_embedded']['files']:
                 if 'uid' in f and 'mongo_id' in f:
-                    self._cache[f['uid']] = f['mongo_id']
+                    self._cache.set_mongo_id(f['uid'], f['mongo_id'])
 
             return rdict
         else:
@@ -125,37 +154,19 @@ class FileCatalogPyClient:
         *Note*: Since the file catalog is mongo_id based, it might need an additional query to find the uid -> mongo_id mapping.
         However, get_file_list() caches automatically all mappings that it received.
         """
-        if mongo_id is None and uid is None:
-            raise ClientError('You need to specify either `mongo_id` or `uid`')
+        mongo_id = self._get_mongo_id(mongo_id, uid)
 
-        if mongo_id is not None and uid is not None:
-            raise ClientError('The query is ambiguous. Do not specify `uid` and `mongo_id` at the same time.')
-
-        # If mongo_id is given, we have anything we need to do the query
-
-        if uid is not None:
-            # OK, uid is given. Check cache first if we already know the mongo_id
-            if uid in self._cache:
-                # We have the uid/mongo_id pair cached. Yay!
-                mongo_id = self._cache[uid]
-            else:
-                # OK, we need to query the mongo_id
-                self.get_file_list(query = {'uid': uid})
-
-                # Since get_file_list() caches the result, we don't need to read explicitely the result
-                # Check again if we know now the `uid`
-                if uid in self._cache:
-                    # Yay!
-                    mongo_id = self._cache[uid]
-                else:
-                    # :'( The uid has not been found in the file catalog
-                    raise ClientError("The uid `%s` is not present in the file catalog" % uid)
-        
         # Query the data 
         r = requests.get(os.path.join(self._url, 'files', mongo_id))
 
         if r.status_code == requests.codes.OK:
-            return json.loads(r.text)
+            # Cache etag
+            if 'etag' in r.headers:
+                self._cache.set_etag(mongo_id, r.headers['etag'])
+            else:
+                raise Error('The server responded without an etag', -1)
+
+            return r.json()
         else:
             raise error_factory(r.status_code, r.text)
 
@@ -166,22 +177,107 @@ class FileCatalogPyClient:
         `metadata` must be a dictionary and needs to contain at least all mandatory fields.
 
         *Note*: The client does not check the metadata. Checks are entirely done by the server.
+        *Note*: If the file has been created successfully, the new `uid`/`mongo_id` pair will be cached automatically.
         """
         r = requests.post(os.path.join(self._url, 'files'), json.dumps(metadata))
 
         if r.status_code == requests.codes.CREATED:
             # Add uid/mongo_id to cache
-            rdict = json.loads(r.text)
-            self._cache[metadata['uid']] = os.path.basename(rdict['file'])
+            rdict = r.json()
+            self._cache.set_mongo_id(metadata['uid'], os.path.basename(rdict['file']))
+            return rdict
+        elif r.status_code == requests.codes.OK:
+            # Replica added
+            return r.json()
         else:
             raise error_factory(r.status_code, r.text)
 
-    def update_file(self, mongo_id = None, uid = None):
-        pass
+    def update_file(self, mongo_id = None, uid = None, metadata = {}, clear_cache = False):
+        """
+        Updates/patches a metadata of a file.
+
+        `clear_cache`: If set to `True` (`False` is default), it will not use the etag that is in the cache. It will query first the
+        etag and will use this instead.
+        """
+        mongo_id = self._get_mongo_id(mongo_id, uid)
+
+        if not metadata:
+            raise ClientError('No metadata has been passed to update file metadata')
+
+        # Find etag
+        # Check if the cache should be cleared:
+        if clear_cache:
+            self._cache.delete_etag(mongo_id)
+
+        etag = None
+        if self._cache.has_etag(mongo_id):
+            etag = self._cache.get_etag(mongo_id)
+        else:
+            # Query etag: utilize get_file() since it caches the etag automatically
+            self.get_file(mongo_id = mongo_id)
+            if self._cache.has_etag(mongo_id):
+                etag = self._cache.get_etag(mongo_id)
+            else:
+                # OK, no error has been raised (e.g. the file does not exist) but we still
+                # do not know the etag. Thats odd. Abort.
+                raise ClientError("Could not update file with `mongo_id` = %s because we could not find the etag" % mongo_id)
+
+        r = requests.patch(os.path.join(self._url, 'files', mongo_id),
+                           data = json.dumps(metadata),
+                           headers = {'If-None-Match': etag})
+
+        if r.status_code == requests.codes.OK:
+            # Cache etag
+            if 'etag' in r.headers:
+                self._cache.set_etag(mongo_id, r.headers['etag'])
+            else:
+                raise Error('The server responded without an etag', -1)
+
+            return r.json()
+        else:
+            raise error_factory(r.status_code, r.text)
 
     def replace_file(self, mongo_id = None, uid = None):
         pass
 
     def delete_file(self, mongo_id = None, uid = None):
         pass
+
+    def _get_mongo_id(self, mongo_id, uid):
+        """
+        Helper to support the interface of using `mongo_id` or `uid` to query/store data.
+        """
+        if mongo_id is None and uid is None:
+            raise ClientError('You need to specify either `mongo_id` or `uid`')
+
+        if mongo_id is not None and uid is not None:
+            raise ClientError('The query is ambiguous. Do not specify `uid` and `mongo_id` at the same time.')
+
+        # If mongo_id is given, we have anything we need to do the query
+
+        if uid is not None:
+            mongo_id = self._get_mongo_id_by_uid(uid)
+
+        return mongo_id
+
+    def _get_mongo_id_by_uid(self, uid):
+        """
+        Tries to find the `mongo_id` by only knowing the `uid`.
+        """
+        # Check cache first if we already know the mongo_id
+        if self._cache.has_mongo_id(uid):
+            # We have the uid/mongo_id pair cached. Yay!
+            return self._cache.get_mongo_id(uid)
+        else:
+            # OK, we need to query the mongo_id
+            self.get_file_list(query = {'uid': uid})
+
+            # Since get_file_list() caches the result, we don't need to read explicitely the result
+            # Check again if we know now the `uid`
+            if self._cache.has_mongo_id(uid):
+                # Yay!
+                return self._cache.get_mongo_id(uid)
+            else:
+                # :'( The uid has not been found in the file catalog
+                raise ClientError("The uid `%s` is not present in the file catalog" % uid)
 
