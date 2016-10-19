@@ -6,6 +6,12 @@ To get the prerequisites necessary for the client:
 
     pip install requests
 
+## Running the Unit Tests
+To run the unit tests, you must started the file_catalog server at `localhost:8888` (or you change the address in in the test set up).
+Run the tests:
+
+    python -m unittest discover
+
 ## Quickstart
 The client is a simple python class that wraps the HTTP requests into methods.
 
