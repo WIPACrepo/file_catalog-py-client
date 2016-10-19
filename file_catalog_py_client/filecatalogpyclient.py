@@ -241,8 +241,8 @@ class FileCatalogPyClient:
         if self._cache.has_etag(mongo_id):
             etag = self._cache.get_etag(mongo_id)
         else:
-            # Query etag: utilize get_file() since it caches the etag automatically
-            self.get_file(mongo_id = mongo_id)
+            # Query etag: utilize get() since it caches the etag automatically
+            self.get(mongo_id = mongo_id)
             if self._cache.has_etag(mongo_id):
                 etag = self._cache.get_etag(mongo_id)
             else:
