@@ -135,7 +135,7 @@ class FileCatalogPyClient:
         # add base api path:
         self._url = os.path.join(self._url, 'api')
 
-    def get_file_list(self, query = {}, start = None, limit = None):
+    def get_list(self, query = {}, start = None, limit = None):
         """
         Queries the file list from the file catalog.
 
@@ -169,12 +169,12 @@ class FileCatalogPyClient:
         else:
             raise error_factory(r.status_code, r.text)
 
-    def get_file(self, mongo_id = None, uid = None):
+    def get(self, mongo_id = None, uid = None):
         """
         Queries meta information for a specific file. The file can be queried by `mongo_id` or by `uid`.
         
         *Note*: Since the file catalog is mongo_id based, it might need an additional query to find the uid -> mongo_id mapping.
-        However, get_file_list() caches automatically all mappings that it received.
+        However, get_list() caches automatically all mappings that it received.
         """
         mongo_id = self._get_mongo_id(mongo_id, uid)
 
@@ -192,7 +192,7 @@ class FileCatalogPyClient:
         else:
             raise error_factory(r.status_code, r.text)
 
-    def create_file(self, metadata):
+    def create(self, metadata):
         """
         Tries to create a file in the file catalog.
 
@@ -214,16 +214,16 @@ class FileCatalogPyClient:
         else:
             raise error_factory(r.status_code, r.text)
 
-    def update_file(self, mongo_id = None, uid = None, metadata = {}, clear_cache = False):
+    def update(self, mongo_id = None, uid = None, metadata = {}, clear_cache = False):
         """
         Updates/patches a metadata of a file.
 
         `clear_cache`: If set to `True` (`False` is default), it will not use the etag that is in the cache. It will query first the
         etag and will use this instead.
         """
-        return self._update_or_replace_file(mongo_id = mongo_id, uid = uid, metadata = metadata, clear_cache = clear_cache, method = requests.patch)
+        return self._update_or_replace(mongo_id = mongo_id, uid = uid, metadata = metadata, clear_cache = clear_cache, method = requests.patch)
 
-    def _update_or_replace_file(self, mongo_id = None, uid = None, metadata = {}, clear_cache = False, method = None):
+    def _update_or_replace(self, mongo_id = None, uid = None, metadata = {}, clear_cache = False, method = None):
         """
         Since `patch` and `put` have the same interface but do different things, we only need one method with a switch... :)
         """
@@ -265,13 +265,13 @@ class FileCatalogPyClient:
         else:
             raise error_factory(r.status_code, r.text)
 
-    def replace_file(self, mongo_id = None, uid = None, metadata = {}, clear_cache = False):
+    def replace(self, mongo_id = None, uid = None, metadata = {}, clear_cache = False):
         """
         Replaces the metadata of a file except for `mongo_id` and `uid`.
         """
-        return self._update_or_replace_file(mongo_id = mongo_id, uid = uid, metadata = metadata, clear_cache = clear_cache, method = requests.put)
+        return self._update_or_replace(mongo_id = mongo_id, uid = uid, metadata = metadata, clear_cache = clear_cache, method = requests.put)
 
-    def delete_file(self, mongo_id = None, uid = None):
+    def delete(self, mongo_id = None, uid = None):
         """
         Deletes the metadata of a file.
         """
@@ -311,9 +311,9 @@ class FileCatalogPyClient:
             return self._cache.get_mongo_id(uid)
         else:
             # OK, we need to query the mongo_id
-            self.get_file_list(query = {'uid': uid})
+            self.get_list(query = {'uid': uid})
 
-            # Since get_file_list() caches the result, we don't need to read explicitely the result
+            # Since get_list() caches the result, we don't need to read explicitely the result
             # Check again if we know now the `uid`
             if self._cache.has_mongo_id(uid):
                 # Yay!

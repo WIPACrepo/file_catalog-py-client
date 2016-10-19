@@ -23,42 +23,42 @@ The parameters `start`, `limit`, and `query` are also supported:
     c.get_file_list(query = {'filesize': {'$exists': True}}, start = 42, limit = 3)
 
 ### Create a New File
-To create a new file (that means a new entry for the metadata for a file) one can just use the `create_file()` method.
+To create a new file (that means a new entry for the metadata for a file) one can just use the `create()` method.
 
-    c.create_file({'uid': '1234', 'checksum': '3d539...f5', 'locations': ['/a/path/to/a/copy/file.dat']})
+    c.create({'uid': '1234', 'checksum': '3d539...f5', 'locations': ['/a/path/to/a/copy/file.dat']})
 
 The passed dict needs to fulfill the requirements of the server.
 
 ### Get File Meta Data
-The metadata for a certain file can be queried by using `get_file()`. One can either query by `uid` or `mongo_id`.
+The metadata for a certain file can be queried by using `get()`. One can either query by `uid` or `mongo_id`.
 
-    c.get_file(uid = '1234')
-    c.get_file(mongo_id = '57fd49163a7d4957ca064089')
+    c.get(uid = '1234')
+    c.get(mongo_id = '57fd49163a7d4957ca064089')
 
     # This will fail: either uid or mongo_id can be used
-    c.get_file(uid = 'file uid', mongo_id = '57fd49163a7d4957ca064089')
+    c.get(uid = 'file uid', mongo_id = '57fd49163a7d4957ca064089')
 
 ### Delete a File
-To delete the metadata of a file, use `delete_file()`:
+To delete the metadata of a file, use `delete()`:
 
-    c.delete_file(uid = '1234')
-    c.delete_file(mongo_id = '57fd49163a7d4957ca064089')
+    c.delete(uid = '1234')
+    c.delete(mongo_id = '57fd49163a7d4957ca064089')
 
 ### Update a File
-In order to update a file, `update_file()` can be used. One can use `mongo_id` or `uid` as identifier. `update_file()` utilizes the cache to find the `etag`. If no `etag` has been cached for this file, it queries the `etag` prior the update.
+In order to update a file, `update()` can be used. One can use `mongo_id` or `uid` as identifier. `update()` utilizes the cache to find the `etag`. If no `etag` has been cached for this file, it queries the `etag` prior the update.
 
 **Note:** If you want to ignore the cached `etag`, use `clear_cache = True`.
 
-    c.update_file(uid = '1234', metadata = {'backupd': True})
-    c.update_file(mongo_id = '57fd49163a7d4957ca064089', metadata = {'backupd': True})
+    c.update(uid = '1234', metadata = {'backupd': True})
+    c.update(mongo_id = '57fd49163a7d4957ca064089', metadata = {'backupd': True})
 
 ### Replace a File
 Replacing the metadata of a file is pretty similar to updating it. The difference is that any key that is not passed via the `metadata` will be deleted. Therefore, be sure to add the mandatory fields except for the `uid` and `mongo_id` since they cannot be changed.
 
 **Note:** If you want to ignore the cached `etag`, use `clear_cache = True`.
 
-    c.replace_file(uid = '1234', metadata = {'checksum': '3d539...f5', 'locations': ['/a/path/to/a/copy/file.dat'], 'backup': False})
-    c.replace_file(mongo_id = '57fd49163a7d4957ca064089', metadata = {'checksum': '3d539...f5', 'locations': ['/a/path/to/a/copy/file.dat'], 'backup': False})
+    c.replace(uid = '1234', metadata = {'checksum': '3d539...f5', 'locations': ['/a/path/to/a/copy/file.dat'], 'backup': False})
+    c.replace(mongo_id = '57fd49163a7d4957ca064089', metadata = {'checksum': '3d539...f5', 'locations': ['/a/path/to/a/copy/file.dat'], 'backup': False})
 
 ## Errors
 There are two types of errors: client side errors and server side errors. Client side errors are instances of `filecatalogpyclient.ClientError`. Server side errors are instances of `filecatalogpyclient.Error`.
