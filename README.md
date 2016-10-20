@@ -21,12 +21,12 @@ In order to get the file list, just do:
     from file_catalog_py_client import filecatalogpyclient
 
     c = filecatalogpyclient.FileCatalogPyClient('http://localhost', 8888)
-    c.get_file_list()
+    c.get_list()
 
 The parameters `start`, `limit`, and `query` are also supported:
 
-    c.get_file_list(query = {'filesize': {'$exists': True}})
-    c.get_file_list(query = {'filesize': {'$exists': True}}, start = 42, limit = 3)
+    c.get_list(query = {'filesize': {'$exists': True}})
+    c.get_list(query = {'filesize': {'$exists': True}}, start = 42, limit = 3)
 
 ### Create a New File
 To create a new file (that means a new entry for the metadata for a file) one can just use the `create()` method.
