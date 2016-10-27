@@ -27,6 +27,7 @@ class TestClient(unittest.TestCase):
         # We don't know mongo_id and we don't know the value of _links (and we don't care)
         del r['_links']
         del r['mongo_id']
+        del r['meta_modify_date']
         self.assertDictEqual(expected, r)
 
         return mongo_id
