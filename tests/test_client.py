@@ -134,7 +134,7 @@ class TestClient(unittest.TestCase):
         with self.assertRaises(filecatalogpyclient.BadRequestError) as cm:
             self.client.replace(uid = self.metadata_pattern['uid'], metadata = {'foo': 'bar'})
 
-        self.assertEqual(cm.exception.message, 'mandatory metadata missing')
+        self.assertTrue(cm.exception.message.startswith('mandatory metadata missing'))
 
         # =======================================================================
         # Check listing of files
