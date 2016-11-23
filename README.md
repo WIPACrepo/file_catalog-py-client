@@ -21,6 +21,10 @@ In order to get the file list, just do:
     from file_catalog_py_client import filecatalogpyclient
 
     c = filecatalogpyclient.FileCatalogPyClient('http://localhost', 8888)
+    
+    # If you want to reuse the same connection, do:
+    # c = filecatalogpyclient.FileCatalogPyClient('http://localhost', 8888, use_session = True)
+    
     c.get_list()
 
 The parameters `start`, `limit`, and `query` are also supported:

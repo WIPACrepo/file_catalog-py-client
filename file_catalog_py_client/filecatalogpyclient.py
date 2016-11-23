@@ -120,7 +120,7 @@ class Cache:
         self.delete_mongo_id(mongo_id)
 
 class FileCatalogPyClient:
-    def __init__(self, url, port = None):
+    def __init__(self, url, port = None, use_session = False):
         """
         Initializes the client.
 
@@ -134,6 +134,12 @@ class FileCatalogPyClient:
 
         # add base api path:
         self._url = os.path.join(self._url, 'api')
+        
+        # use session?
+        if use_session:
+            self._r = requests.Session()
+        else:
+            self._r = requests
 
     def get_list(self, query = {}, start = None, limit = None):
         """
@@ -156,7 +162,7 @@ class FileCatalogPyClient:
         if query:
             payload['query'] = json.dumps(query)
 
-        r = requests.get(os.path.join(self._url, 'files'), params = payload)
+        r = self._r.get(os.path.join(self._url, 'files'), params = payload)
 
         if r.status_code == requests.codes.OK:
             rdict = r.json()
@@ -179,7 +185,7 @@ class FileCatalogPyClient:
         mongo_id = self._get_mongo_id(mongo_id, uid)
 
         # Query the data 
-        r = requests.get(os.path.join(self._url, 'files', mongo_id))
+        r = self._r.get(os.path.join(self._url, 'files', mongo_id))
 
         if r.status_code == requests.codes.OK:
             # Cache etag
@@ -201,7 +207,7 @@ class FileCatalogPyClient:
         *Note*: The client does not check the metadata. Checks are entirely done by the server.
         *Note*: If the file has been created successfully, the new `uid`/`mongo_id` pair will be cached automatically.
         """
-        r = requests.post(os.path.join(self._url, 'files'), json.dumps(metadata))
+        r = self._r.post(os.path.join(self._url, 'files'), json.dumps(metadata))
 
         if r.status_code == requests.codes.CREATED:
             # Add uid/mongo_id to cache
@@ -221,7 +227,7 @@ class FileCatalogPyClient:
         `clear_cache`: If set to `True` (`False` is default), it will not use the etag that is in the cache. It will query first the
         etag and will use this instead.
         """
-        return self._update_or_replace(mongo_id = mongo_id, uid = uid, metadata = metadata, clear_cache = clear_cache, method = requests.patch)
+        return self._update_or_replace(mongo_id = mongo_id, uid = uid, metadata = metadata, clear_cache = clear_cache, method = self._r.patch)
 
     def _update_or_replace(self, mongo_id = None, uid = None, metadata = {}, clear_cache = False, method = None):
         """
@@ -269,7 +275,7 @@ class FileCatalogPyClient:
         """
         Replaces the metadata of a file except for `mongo_id` and `uid`.
         """
-        return self._update_or_replace(mongo_id = mongo_id, uid = uid, metadata = metadata, clear_cache = clear_cache, method = requests.put)
+        return self._update_or_replace(mongo_id = mongo_id, uid = uid, metadata = metadata, clear_cache = clear_cache, method = self._r.put)
 
     def delete(self, mongo_id = None, uid = None):
         """
