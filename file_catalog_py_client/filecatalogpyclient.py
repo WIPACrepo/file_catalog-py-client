@@ -212,7 +212,7 @@ class FileCatalogPyClient:
         if r.status_code == requests.codes.CREATED:
             # Add uid/mongo_id to cache
             rdict = r.json()
-            self._cache.set_mongo_id(metadata['uid'], os.path.basename(rdict['file']))
+            # self._cache.set_mongo_id(metadata['uid'], os.path.basename(rdict['file']))
             return rdict
         elif r.status_code == requests.codes.OK:
             # Replica added
@@ -327,4 +327,3 @@ class FileCatalogPyClient:
             else:
                 # :'( The uid has not been found in the file catalog
                 raise ClientError("The uid `%s` is not present in the file catalog" % uid)
-
