@@ -77,7 +77,7 @@ def error_factory(code, message):
         return Error(message, code)
 
 
-class FileCatalogPyClient:
+class WFCClient:
     def __init__(self, url, port=None, use_session=False):
         """
         Initializes the client.
