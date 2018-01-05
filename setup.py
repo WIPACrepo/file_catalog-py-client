@@ -1,11 +1,11 @@
 from setuptools import setup, find_packages
 
 setup(
-    name='icecube_file_catalog_client',
+    name='wipac_fc',
     use_scm_version=True,
     setup_requires=['setuptools_scm'],
-    description='IceCube File Catalog Python Client',
-    url='http://wipca.wisc.edu',
+    description='WIPAC File Catalog Python Client',
+    url='https://github.com/WIPACrepo/wipac_fc',
     author='WIPAC',
     author_email='contact-us@icecube.wisc.edu',
     classifiers=[
@@ -18,7 +18,7 @@ setup(
     packages=find_packages(),
     install_requires=['requests'],
     package_data={
-        'file_catalog_py_client': []
+        'wipac_fc': []
     },
     entry_points={
         'console_scripts': [
