@@ -98,6 +98,40 @@ class WFCClient:
         else:
             self._r = requests
 
+    def get_files(self, run_number=None, dataset=None, event_id=None,
+                  processing_level=None, season=None, keys=None):
+        """
+        Queries files from the file catalog.
+        """
+        payload = {}
+
+        if run_number is not None:
+            payload['run_number'] = int(run_number)
+
+        if dataset is not None:
+            payload['dataset'] = int(dataset)
+
+        if event_id is not None:
+            payload['event_id'] = int(event_id)
+
+        if processing_level is not None:
+            payload['processing_level'] = processing_level
+
+        if season is not None:
+            payload['season'] = int(season)
+
+        if keys is not None:
+            payload['keys'] = '|'.join(keys)
+
+        r = self._r.get(os.path.join(self._url, 'files'), params=payload)
+
+        if r.status_code == requests.codes.OK:
+            rdict = r.json()
+
+            return rdict['files']
+        else:
+            raise error_factory(r.status_code, r.text)
+
     def get_list(self, query={}, start=None, limit=None):
         """
         Queries the file list from the file catalog.
